@@ -1,0 +1,90 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+dist/
+build/
+*.spec
+*.exe
+*.bin
+*.wasm
+
+# Environment
+.env
+.env.local
+.env.*.local
+.env.production
+*.pem
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+app_debug.log
+metrics_history.log
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Python (from prior life)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Vite / tooling
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+.parcel-cache/
+.cache/
+*.local
+
+# MCP
+.mcp/
+.playwright-mcp/
+trace.json
+
+# Playwright
+playwright-report/
+test-results/
+playwright/.cache/
+
+# Docs
+docs/
+
+# Misc patterns
+kju
+afqks
+
+# Test plans
+*testplan*
+*test_plan*
+*TestPlan*
+
+# Misc
+*.bak
+*.orig
