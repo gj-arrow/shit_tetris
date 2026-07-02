@@ -5,11 +5,8 @@ import {
   useTheme,
 } from '@mui/material'
 import GameBoard from './GameBoard'
-import { TetrisGame, getCellSize, setCellSize, COLS } from './tetrisLogic'
+import { TetrisGame } from './tetrisLogic'
 import NextPiece from './NextPiece'
-import StatsBar from './StatsBar'
-import BottomSheet from './BottomSheet'
-
 import bgImage from './assets/images/shit5.png'
 import shit1 from './assets/images/shit1.png'
 import shit2 from './assets/images/shit2.png'
@@ -36,10 +33,6 @@ const keyStyles = {
   border: '1px solid #5A5F70',
   margin: '0 2px',
   verticalAlign: 'middle',
-}
-
-function isTouchDevice() {
-  return 'ontouchstart' in window || navigator.maxTouchPoints > 0
 }
 
 function StatCard({ label, value, color = '#DFE7FF' }) {
@@ -109,6 +102,10 @@ function ControlRow({ keys, action }) {
   )
 }
 
+function isTouchDevice() {
+  return 'ontouchstart' in window || navigator.maxTouchPoints > 0
+}
+
 function App() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
@@ -126,7 +123,6 @@ function App() {
     const saved = localStorage.getItem('poop-tetris-highscore')
     return saved ? parseInt(saved, 10) : 0
   })
-  const [cellSize, setCellSizeState] = useState(28)
   const rainCanvasRef = useRef(null)
 
   const updateUI = useCallback(() => {
@@ -147,20 +143,16 @@ function App() {
     }
   }, [game, nextPieceRef, highScore])
 
+  useEffect(() => {
+    const id = setInterval(() => updateUI(), 200)
+    return () => clearInterval(id)
+  }, [updateUI])
+
+  // Stable ref to updateUI so pointer event handlers don't get recreated
   const updateUIRef = useRef(updateUI)
   useEffect(() => {
     updateUIRef.current = updateUI
   }, [updateUI])
-
-  useEffect(() => {
-    let animFrameId
-    const tick = () => {
-      updateUIRef.current()
-      animFrameId = requestAnimationFrame(() => tick())
-    }
-    animFrameId = requestAnimationFrame(() => tick())
-    return () => cancelAnimationFrame(animFrameId)
-  }, [])
 
   const callUpdateUI = useCallback(() => {
     updateUIRef.current()
@@ -205,8 +197,6 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [game, updateUI])
 
-
-
   useEffect(() => {
     document.body.style.backgroundImage = `url(${bgImage})`
     document.body.style.backgroundSize = 'cover'
@@ -227,31 +217,6 @@ function App() {
     }
   }, [])
 
-  // Dynamic cell size for mobile
-  useEffect(() => {
-    const calc = () => {
-      if (isMobile) {
-        const availableHeight = window.innerHeight - 220
-        const cs = Math.max(18, Math.min(28, Math.floor(availableHeight / 20)))
-        setCellSizeState(cs)
-        setCellSize(cs)
-      } else {
-        setCellSizeState(28)
-        setCellSize(28)
-      }
-    }
-    calc()
-    window.addEventListener('resize', calc)
-    return () => window.removeEventListener('resize', calc)
-  }, [isMobile])
-
-  // Lock orientation on mobile
-  useEffect(() => {
-    if (isMobile && screen.orientation && screen.orientation.lock) {
-      screen.orientation.lock('portrait').catch(() => {})
-    }
-  }, [isMobile])
-
   useEffect(() => {
     if (!gameOverOpen) return
 
@@ -268,22 +233,20 @@ function App() {
       return img
     })
 
-    const size = isMobile ? 28 : 40
+    const size = 40
     const particles = []
     let lastSpawn = 0
     let rafId
-    const spawnRate = isMobile ? 120 : 60
-    const spawnCount = isMobile ? 2 : 4
 
     const draw = (now) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-      if (now - lastSpawn > spawnRate) {
-        for (let i = 0; i < spawnCount; i++) {
+      if (now - lastSpawn > 60) {
+        for (let i = 0; i < 4; i++) {
           particles.push({
             x: Math.random() * canvas.width,
             y: -size - Math.random() * 100,
-            speed: 1 + Math.random() * 3,
+            speed: 1 + Math.random() * 4,
             img: loadedImages[Math.floor(Math.random() * loadedImages.length)],
           })
         }
@@ -292,7 +255,7 @@ function App() {
 
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i]
-        p.y += p.speed * (isMobile ? 1.5 : 2)
+        p.y += p.speed * 2
         if (p.img.complete && p.img.naturalWidth > 0) {
           ctx.drawImage(p.img, p.x, p.y, size, size)
         }
@@ -342,9 +305,6 @@ function App() {
       setTimeout(() => button?.blur(), 10)
     }
 
-    if (game.getState().state === 'playing') {
-      game.spawnNext()
-    }
     updateUI()
   }
 
@@ -364,66 +324,169 @@ function App() {
       minHeight: '100vh',
       maxHeight: '100vh',
       overflow: 'hidden',
-      pt: 1,
-      pb: 1,
-      px: 2,
+      pt: isMobile ? 0.5 : 1,
+      pb: 0,
+      px: isMobile ? 0.5 : 2,
     }}>
       {/* Title */}
       <Typography
         variant="h4"
         align="center"
-        gutterBottom
         sx={{
           fontFamily: '"Bangers", system-ui, sans-serif',
-          fontSize: isMobile ? '1.5rem' : '2.2rem',
+          fontSize: isMobile ? '1.3rem' : '2.2rem',
           letterSpacing: '2px',
           color: '#DFE7FF',
           textShadow: '0 0 20px rgba(113, 7, 231, 0.5), 0 2px 4px rgba(0,0,0,0.5)',
-          mb: 0.5,
-          lineHeight: 1,
+          mb: 0.25,
+          lineHeight: 1.1,
         }}
       >
         КАКАШЕЧНЫЙ ТЕТРИС
       </Typography>
 
-      {/* State indicator */}
-      <Chip
-        label={stateChip.label}
-        sx={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: '0.6rem',
-          fontWeight: 700,
-          letterSpacing: '1.5px',
-          color: stateChip.color,
-          backgroundColor: stateChip.bg,
-          border: `1px solid ${stateChip.color}`,
-          mb: 0.75,
-          height: '24px',
-        }}
-      />
-
-      {/* Mobile stats bar */}
-      {isMobile && (
-        <StatsBar
-          score={score}
-          level={level}
-          lines={lines}
-          nextPiece={nextPieceRef}
-          cellSize={cellSize}
+      {/* State indicator — на мобильных внутри TopBar */}
+      {!isMobile && (
+        <Chip
+          label={stateChip.label}
+          sx={{
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: '0.6rem',
+            fontWeight: 700,
+            letterSpacing: '1.5px',
+            color: stateChip.color,
+            backgroundColor: stateChip.bg,
+            border: `1px solid ${stateChip.color}`,
+            mb: 0.75,
+            height: '24px',
+          }}
         />
       )}
 
+      {/* Mobile TopBar — Score слева, остальное справа */}
+      {isMobile && (
+        <Paper
+          sx={{
+            width: '100%',
+            p: '8px 12px',
+            mb: 2,
+            backgroundColor: '#2A2F3E',
+            border: '2px solid #3A3F50',
+            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'center',
+          }}
+        >
+          {/* Левая колонка: счёт сверху, пауза снизу */}
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.75, alignSelf: 'stretch', py: 1 }}>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: '#8A8FA0', lineHeight: 1, mb: 0.25 }}>
+                Счёт
+              </Typography>
+              <Typography sx={{ fontFamily: '"Bangers", system-ui, sans-serif', fontSize: '1.8rem', letterSpacing: '1px', color: '#7107E7', lineHeight: 1.1 }}>
+                {score}
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              onClick={handlePause}
+              sx={{
+                minWidth: 52,
+                width: 52,
+                height: 52,
+                borderRadius: '50%',
+                p: 0,
+                fontFamily: '"Bangers", system-ui, sans-serif',
+                fontSize: '1.3rem',
+                backgroundColor: gameState === 'paused' ? '#16A34A' : '#7107E7',
+                '&:hover': { backgroundColor: gameState === 'paused' ? '#22c55e' : '#8B2FFF' },
+              }}
+            >
+              {gameState === 'paused' ? '▶' : '⏸'}
+            </Button>
+          </Box>
+
+          {/* Центр: Next Piece квадрат */}
+          <Box sx={{
+            width: 120,
+            height: 120,
+            mx: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#1C202B',
+            borderRadius: 1,
+            border: '2px solid #3A3F50',
+            flexShrink: 0,
+          }}>
+            <Box sx={{
+              transform: 'scale(1.0)',
+              transformOrigin: 'center center',
+              lineHeight: 0,
+            }}>
+              <NextPiece piece={nextPieceRef} />
+            </Box>
+          </Box>
+
+          {/* Правая колонка: статус сверху, уровень/линии снизу */}
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.75, alignSelf: 'stretch', py: 1 }}>
+            <Chip
+              label={stateChip.label}
+              sx={{
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: '0.9rem',
+                fontWeight: 700,
+                letterSpacing: '2px',
+                color: stateChip.color,
+                backgroundColor: '#1C202B',
+                border: `2px solid ${stateChip.color}`,
+                height: '40px',
+                '& .MuiChip-label': { px: 2 },
+                flexShrink: 0,
+              }}
+            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ textAlign: 'center', minWidth: 48 }}>
+                <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: '#8A8FA0', lineHeight: 1, mb: 0.25 }}>
+                  Ур
+                </Typography>
+                <Typography sx={{ fontFamily: '"Bangers", system-ui, sans-serif', fontSize: '1.4rem', color: '#16A34A', lineHeight: 1.1 }}>
+                  {level}
+                </Typography>
+              </Box>
+              <Box sx={{ width: '1px', height: 36, backgroundColor: '#3A3F50' }} />
+              <Box sx={{ textAlign: 'center', minWidth: 48 }}>
+                <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: '#8A8FA0', lineHeight: 1, mb: 0.25 }}>
+                  Лин
+                </Typography>
+                <Typography sx={{ fontFamily: '"Bangers", system-ui, sans-serif', fontSize: '1.4rem', color: '#D97706', lineHeight: 1.1 }}>
+                  {lines}
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Paper>
+      )}
+
+      {/* Game Board - fills remaining space on mobile */}
       <Box sx={{
+        flex: isMobile ? 1 : 0,
         display: 'flex',
         flexDirection: isMobile ? 'column' : 'row',
-        alignItems: 'flex-start',
-        gap: isMobile ? 0.5 : 2,
+        alignItems: isMobile ? 'center' : 'flex-start',
+        justifyContent: isMobile ? 'flex-start' : 'center',
+        gap: isMobile ? 0 : 2,
+        pb: isMobile ? '16px' : 0,
         width: '100%',
-        maxWidth: isMobile ? COLS * cellSize + 16 : 680,
-        justifyContent: 'center',
+        maxWidth: isMobile ? '100%' : 680,
+        minHeight: isMobile ? 0 : undefined,
+        overflow: 'hidden',
       }}>
-        {/* Game Board */}
-        <Box sx={{ flexShrink: 0, touchAction: 'none' }}>
+        {/* Board */}
+        <Box sx={{
+          flexShrink: 0,
+          ...(isMobile ? { maxHeight: '100%', display: 'flex' } : {}),
+        }}>
           <Paper
             sx={{
               p: isMobile ? 0.5 : 0.75,
@@ -463,7 +526,7 @@ function App() {
                 letterSpacing: '1px',
                 color: '#8A8FA0',
                 display: 'block',
-                mb: 0.5,
+            mb: 2,
               }}>
                 Фигура
               </Typography>
@@ -478,14 +541,16 @@ function App() {
             </Paper>
 
             {/* Stats - compact */}
-            <Paper sx={{
-              p: '6px 10px',
-              backgroundColor: '#2A2F3E',
-              border: '1px solid #3A3F50',
-              borderRadius: 2,
-              display: 'flex',
-              justifyContent: 'space-between',
-            }}>
+            <Paper
+              sx={{
+                p: '6px 10px',
+                backgroundColor: '#2A2F3E',
+                border: '1px solid #3A3F50',
+                borderRadius: 2,
+                display: 'flex',
+                justifyContent: 'space-between',
+              }}
+            >
               <Box sx={{ textAlign: 'center', flex: 1 }}>
                 <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.5rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8A8FA0' }}>
                   Счёт
@@ -526,19 +591,17 @@ function App() {
               </Paper>
             )}
 
-            {/* Controls */}
-            {!touchSupported && (
-              <Paper sx={{ p: 1, backgroundColor: '#2A2F3E', border: '1px solid #3A3F50', borderRadius: 2 }}>
-                <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.55rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: '#8A8FA0', display: 'block', mb: 0.75 }}>
-                  Управление
-                </Typography>
-                <ControlRow keys={['←', '→']} action="движ" />
-                <ControlRow keys={['↓']} action="вниз" />
-                <ControlRow keys={['Пробел']} action="сброс" />
-                <ControlRow keys={['Enter']} action="поворот" />
-                <ControlRow keys={['P']} action="пауза" />
-              </Paper>
-            )}
+            {/* Controls - desktop only */}
+            <Paper sx={{ p: 1, backgroundColor: '#2A2F3E', border: '1px solid #3A3F50', borderRadius: 2 }}>
+              <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.55rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: '#8A8FA0', display: 'block', mb: 0.75 }}>
+                Управление
+              </Typography>
+              <ControlRow keys={['←', '→']} action="движ" />
+              <ControlRow keys={['↓']} action="вниз" />
+              <ControlRow keys={['Пробел']} action="сброс" />
+              <ControlRow keys={['Enter']} action="поворот" />
+              <ControlRow keys={['P']} action="пауза" />
+            </Paper>
 
             {/* Pause Button */}
             <Button variant="contained" onClick={handlePause} fullWidth
@@ -555,153 +618,205 @@ function App() {
         )}
       </Box>
 
-      {/* Mobile Pause Button */}
-      {isMobile && (gameState === 'playing' || gameState === 'paused') && (
-        <Button
-          variant="contained"
-          onClick={handlePause}
-          sx={{
-            position: 'fixed',
-            bottom: 12,
-            right: 12,
-            minWidth: 44,
-            width: 44,
-            height: 44,
-            borderRadius: '50%',
-            p: 0,
-            fontFamily: '"Bangers", system-ui, sans-serif',
-            fontSize: '1.1rem',
-            backgroundColor: gameState === 'paused' ? '#16A34A' : '#7107E7',
-            '&:hover': { backgroundColor: gameState === 'paused' ? '#22c55e' : '#8B2FFF' },
-            zIndex: 1100,
-          }}
-        >
-          {gameState === 'paused' ? '▶' : '⏸'}
-        </Button>
-      )}
-
-      {/* Start Dialog / Sheet */}
-      {isMobile ? (
-        <BottomSheet
-          open={startOpen}
-          onClose={() => {}}
-          title="КАКАШЕЧНЫЙ ТЕТРИС"
-          subtitle="Собирай линии, набирай очки!"
-          controls={touchSupported ? 'Свайп ← → движение\nСвайп ↓ — сброс\nТап — поворот' : '← → движение\n↓ вниз\nПробел сброс'}
-          actionLabel="НАЧАТЬ ИГРУ"
-          onAction={handleStart}
-          accentColor="#7107E7"
-        />
-      ) : (
-        <Dialog
-          open={startOpen}
-          maxWidth="xs"
-          slotProps={{ paper: { sx: { backgroundColor: '#2A2F3E', border: '2px solid #7107E7', borderRadius: 3 } } }}
-        >
-          <DialogTitle sx={{ fontFamily: '"Bangers", system-ui, sans-serif', fontSize: '2rem', letterSpacing: '2px', color: '#DFE7FF', textAlign: 'center' }}>
-            КАКАШЕЧНЫЙ ТЕТРИС
-          </DialogTitle>
-          <DialogContent sx={{ textAlign: 'center', py: 3 }}>
-            <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.85rem', color: '#8A8FA0', mb: 2 }}>
-              Собирай линии, набирай очки!
-            </Typography>
-            <Box sx={{ p: 2, backgroundColor: '#1C202B', borderRadius: 2, border: '1px solid #3A3F50' }}>
-              <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.7rem', color: '#DFE7FF', lineHeight: 1.8 }}>
-                {touchSupported ? (
-                  <>
-                    Свайп ← → — движение{'\n'}
-                    Свайп ↑ — поворот{'\n'}
-                    Свайп ↓ — сброс
-                  </>
-                ) : (
-                  <>
-                    ← → — движение{'\n'}
-                    ↓ — вниз{'\n'}
-                    Пробел — сброс{'\n'}
-                    Enter — поворот{'\n'}
-                    P — пауза
-                  </>
-                )}
+      {/* Start Dialog */}
+      <Dialog
+        open={startOpen}
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            backgroundColor: '#2A2F3E',
+            border: '2px solid #7107E7',
+            borderRadius: 3,
+          },
+        }}
+      >
+        <DialogTitle sx={{
+          fontFamily: '"Bangers", system-ui, sans-serif',
+          fontSize: '2rem',
+          letterSpacing: '2px',
+          color: '#DFE7FF',
+          textAlign: 'center',
+        }}>
+          КАКАШЕЧНЫЙ ТЕТРИС
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center', py: 3 }}>
+          <Typography sx={{
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: '0.85rem',
+            color: '#8A8FA0',
+            mb: 2,
+          }}>
+            Собирай линии, набирай очки!
+          </Typography>
+            <Box sx={{
+              p: 2,
+              backgroundColor: '#1C202B',
+              borderRadius: 2,
+              border: '1px solid #3A3F50',
+            }}>
+              <Typography sx={{
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: '0.7rem',
+                color: '#DFE7FF',
+                lineHeight: 1.8,
+              }}>
+                {isMobile
+                  ? `← → — движение${'\n'}↑ — вниз (1 кл)${'\n'}↓ — сброс${'\n'}Тап — поворот`
+                  : `← → — движение${'\n'}↓ — вниз${'\n'}Пробел — сброс${'\n'}Enter — поворот${'\n'}P — пауза`
+                }
               </Typography>
             </Box>
-          </DialogContent>
-          <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
-            <Button onClick={handleStart} variant="contained"
-              sx={{ fontFamily: '"Bangers", system-ui, sans-serif', fontSize: '1.3rem', letterSpacing: '2px', py: 1.5, px: 4, backgroundColor: '#7107E7', '&:hover': { backgroundColor: '#8B2FFF' } }}
-            >
-              НАЧАТЬ ИГРУ
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+          <Button
+            onClick={handleStart}
+            variant="contained"
+            sx={{
+              fontFamily: '"Bangers", system-ui, sans-serif',
+              fontSize: '1.3rem',
+              letterSpacing: '2px',
+              py: 1.5,
+              px: 4,
+              backgroundColor: '#7107E7',
+              '&:hover': { backgroundColor: '#8B2FFF' },
+            }}
+          >
+            НАЧАТЬ ИГРУ
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-      {/* Game Over Dialog / Sheet */}
-      {isMobile ? (
-        <BottomSheet
-          open={gameOverOpen}
-          onClose={() => {}}
-          title="ИГРА ОКОНЧЕНА"
-          subtitle={score >= highScore && score > 0 ? 'НОВЫЙ РЕКОРД!' : ''}
-          score={score}
-          level={level}
-          lines={lines}
-          actionLabel="ИГРАТЬ СНОВА"
-          onAction={handleRestart}
-          accentColor="#DC2626"
-        />
-      ) : (
-        <Dialog
-          open={gameOverOpen}
-          maxWidth="xs"
-          slotProps={{ paper: { sx: { backgroundColor: '#2A2F3E', border: '2px solid #DC2626', borderRadius: 3 } } }}
-        >
-          <DialogTitle sx={{ fontFamily: '"Bangers", system-ui, sans-serif', fontSize: '2.5rem', letterSpacing: '2px', color: '#DC2626', textAlign: 'center', textShadow: '0 0 20px rgba(220, 38, 38, 0.3)' }}>
-            ИГРА ОКОНЧЕНА
-          </DialogTitle>
-          <DialogContent sx={{ textAlign: 'center', py: 3 }}>
-            <Typography sx={{ fontFamily: '"Bangers", system-ui, sans-serif', fontSize: '3rem', letterSpacing: '2px', color: '#7107E7', lineHeight: 1, mb: 1 }}>
-              {score}
-            </Typography>
-            <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: '#8A8FA0', display: 'block', mb: 2 }}>
-              финальный счёт
-            </Typography>
-            <Grid container spacing={1} justifyContent="center">
-              <Grid item xs={6}>
-                <Paper sx={{ p: 1.5, backgroundColor: '#1C202B', border: '1px solid #3A3F50', borderRadius: 2, textAlign: 'center' }}>
-                  <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: '#8A8FA0', display: 'block' }}>
-                    Уровень
-                  </Typography>
-                  <Typography sx={{ fontFamily: '"Bangers", system-ui, sans-serif', fontSize: '1.5rem', color: '#16A34A' }}>
-                    {level}
-                  </Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={6}>
-                <Paper sx={{ p: 1.5, backgroundColor: '#1C202B', border: '1px solid #3A3F50', borderRadius: 2, textAlign: 'center' }}>
-                  <Typography sx={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: '#8A8FA0', display: 'block' }}>
-                    Линии
-                  </Typography>
-                  <Typography sx={{ fontFamily: '"Bangers", system-ui, sans-serif', fontSize: '1.5rem', color: '#D97706' }}>
-                    {lines}
-                  </Typography>
-                </Paper>
-              </Grid>
-            </Grid>
-            {score >= highScore && score > 0 && (
-              <Typography sx={{ fontFamily: '"Bangers", system-ui, sans-serif', fontSize: '1.2rem', letterSpacing: '1px', color: '#DAA520', mt: 2, textShadow: '0 0 10px rgba(218, 165, 32, 0.3)' }}>
-                ★ НОВЫЙ РЕКОРД! ★
+      {/* Game Over Dialog */}
+      <Dialog
+        open={gameOverOpen}
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            backgroundColor: '#2A2F3E',
+            border: '2px solid #DC2626',
+            borderRadius: 3,
+          },
+        }}
+      >
+        <DialogTitle sx={{
+          fontFamily: '"Bangers", system-ui, sans-serif',
+          fontSize: '2.5rem',
+          letterSpacing: '2px',
+          color: '#DC2626',
+          textAlign: 'center',
+          textShadow: '0 0 20px rgba(220, 38, 38, 0.3)',
+        }}>
+          ИГРА ОКОНЧЕНА
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center', py: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mb: 2 }}>
+            {/* Счёт */}
+            <Box sx={{ textAlign: 'center', minWidth: 80 }}>
+              <Typography sx={{
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: '0.65rem',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                color: '#8A8FA0',
+                mb: 0.25,
+              }}>
+                Счёт
               </Typography>
-            )}
-          </DialogContent>
-          <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
-            <Button onClick={handleRestart} variant="contained"
-              sx={{ fontFamily: '"Bangers", system-ui, sans-serif', fontSize: '1.3rem', letterSpacing: '2px', py: 1.5, px: 4, backgroundColor: '#DC2626', '&:hover': { backgroundColor: '#EF4444' } }}
-            >
-              ИГРАТЬ СНОВА
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
+              <Typography sx={{
+                fontFamily: '"Bangers", system-ui, sans-serif',
+                fontSize: '2rem',
+                letterSpacing: '2px',
+                color: '#7107E7',
+                lineHeight: 1,
+              }}>
+                {score}
+              </Typography>
+            </Box>
+
+            {/* Уровень */}
+            <Box sx={{ width: '1px', height: 56, backgroundColor: '#3A3F50', alignSelf: 'center' }} />
+
+            <Box sx={{ textAlign: 'center', minWidth: 80 }}>
+              <Typography sx={{
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: '0.65rem',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                color: '#8A8FA0',
+                mb: 0.25,
+              }}>
+                Уровень
+              </Typography>
+              <Typography sx={{
+                fontFamily: '"Bangers", system-ui, sans-serif',
+                fontSize: '2rem',
+                letterSpacing: '2px',
+                color: '#16A34A',
+                lineHeight: 1,
+              }}>
+                {level}
+              </Typography>
+            </Box>
+
+            {/* Линии */}
+            <Box sx={{ width: '1px', height: 56, backgroundColor: '#3A3F50', alignSelf: 'center' }} />
+
+            <Box sx={{ textAlign: 'center', minWidth: 80 }}>
+              <Typography sx={{
+                fontFamily: '"JetBrains Mono", monospace',
+                fontSize: '0.65rem',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                color: '#8A8FA0',
+                mb: 0.25,
+              }}>
+                Линии
+              </Typography>
+              <Typography sx={{
+                fontFamily: '"Bangers", system-ui, sans-serif',
+                fontSize: '2rem',
+                letterSpacing: '2px',
+                color: '#D97706',
+                lineHeight: 1,
+              }}>
+                {lines}
+              </Typography>
+            </Box>
+          </Box>
+          {score >= highScore && score > 0 && (
+            <Typography sx={{
+              fontFamily: '"Bangers", system-ui, sans-serif',
+              fontSize: '1.2rem',
+              letterSpacing: '1px',
+              color: '#DAA520',
+              mt: 2,
+              textShadow: '0 0 10px rgba(218, 165, 32, 0.3)',
+            }}>
+              ★ НОВЫЙ РЕКОРД! ★
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+          <Button
+            onClick={handleRestart}
+            variant="contained"
+            sx={{
+              fontFamily: '"Bangers", system-ui, sans-serif',
+              fontSize: '1.3rem',
+              letterSpacing: '2px',
+              py: 1.5,
+              px: 4,
+              backgroundColor: '#DC2626',
+              '&:hover': { backgroundColor: '#EF4444' },
+            }}
+          >
+            ИГРАТЬ СНОВА
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {gameOverOpen && (
         <canvas

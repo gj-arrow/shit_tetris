@@ -69,7 +69,6 @@ const theme = createTheme({
           borderRadius: '12px',
           backgroundColor: '#2A2F3E',
           border: '2px solid #7107E7',
-          backgroundImage: 'none',
         },
         title: {
           fontFamily: '"Bangers", system-ui, sans-serif',

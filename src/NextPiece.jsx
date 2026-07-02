@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react'
-import { TETROMINOES, getCellSize } from './tetrisLogic'
+import { TETROMINOES, CELL_SIZE } from './tetrisLogic'
 
 import shit1 from './assets/images/shit1.png'
 import shit2 from './assets/images/shit2.png'
@@ -38,16 +38,15 @@ function getCachedImage(name) {
   return imgCache[name]
 }
 
-const NextPiece = ({ piece, cellSize }) => {
+const NextPiece = ({ piece }) => {
   const canvasRef = useRef(null)
-  const cs = cellSize || getCellSize()
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas || !piece) return
 
     const ctx = canvas.getContext('2d')
-    const size = 4 * cs
+    const size = 4 * CELL_SIZE
     canvas.width = size
     canvas.height = size
 
@@ -70,26 +69,26 @@ const NextPiece = ({ piece, cellSize }) => {
     const imgName = IMAGE_MAP[type]
     const img = getCachedImage(imgName)
     if (img.complete && img.naturalWidth > 0) {
-      ctx.drawImage(img, x * cs, y * cs, cs, cs)
+      ctx.drawImage(img, x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE)
     } else {
       const color = FALLBACK_COLORS[type] || '#8B4513'
       ctx.fillStyle = color
-      ctx.fillRect(x * cs + 1, y * cs + 1, cs - 2, cs - 2)
+      ctx.fillRect(x * CELL_SIZE + 1, y * CELL_SIZE + 1, CELL_SIZE - 2, CELL_SIZE - 2)
 
       // Inner highlight
       ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'
-      ctx.fillRect(x * cs + 1, y * cs + 1, cs - 2, 4)
-      ctx.fillRect(x * cs + 1, y * cs + 1, 4, cs - 2)
+      ctx.fillRect(x * CELL_SIZE + 1, y * CELL_SIZE + 1, CELL_SIZE - 2, 4)
+      ctx.fillRect(x * CELL_SIZE + 1, y * CELL_SIZE + 1, 4, CELL_SIZE - 2)
 
       // Inner shadow
       ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'
-      ctx.fillRect(x * cs + 1, y * cs + cs - 5, cs - 2, 4)
-      ctx.fillRect(x * cs + cs - 5, y * cs + 1, 4, cs - 2)
+      ctx.fillRect(x * CELL_SIZE + 1, y * CELL_SIZE + CELL_SIZE - 5, CELL_SIZE - 2, 4)
+      ctx.fillRect(x * CELL_SIZE + CELL_SIZE - 5, y * CELL_SIZE + 1, 4, CELL_SIZE - 2)
     }
 
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'
     ctx.lineWidth = 1
-    ctx.strokeRect(x * cs + 0.5, y * cs + 0.5, cs - 1, cs - 1)
+    ctx.strokeRect(x * CELL_SIZE + 0.5, y * CELL_SIZE + 0.5, CELL_SIZE - 1, CELL_SIZE - 1)
   }
 
   return (

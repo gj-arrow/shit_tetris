@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react'
-import { COLS, ROWS, getCellSize, setCellSize } from './tetrisLogic'
+import React, { useRef, useState, useEffect } from 'react'
+import { COLS, ROWS, CELL_SIZE, getCellSize, setCellSize } from './tetrisLogic'
 
 import shit1 from './assets/images/shit1.png'
 import shit2 from './assets/images/shit2.png'
@@ -35,15 +35,17 @@ const GameBoard = ({ game, isMobile, callUpdateUI }) => {
   const imagesRef = useRef({})
   const touchStartRef = useRef(null)
   const lastMoveRef = useRef(0)
-
+  const [resizeKey, setResizeKey] = useState(0)
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
     if (isMobile) {
-      const availableHeight = window.innerHeight - 220
-      const cs = Math.max(18, Math.min(28, Math.floor(availableHeight / ROWS)))
+      // Calculate cell size from available viewport height minus overhead elements
+      const overhead = 190
+      const availH = window.innerHeight - overhead
+      const cs = Math.max(14, Math.min(45, Math.floor(availH / ROWS)))
       setCellSize(cs)
     } else {
       setCellSize(28)
@@ -72,25 +74,31 @@ const GameBoard = ({ game, isMobile, callUpdateUI }) => {
         ctx.fillStyle = color
         ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, cellSize - 2)
 
+        // Inner highlight for depth
         ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'
         ctx.fillRect(x * cellSize + 1, y * cellSize + 1, cellSize - 2, 4)
         ctx.fillRect(x * cellSize + 1, y * cellSize + 1, 4, cellSize - 2)
 
+        // Inner shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'
         ctx.fillRect(x * cellSize + 1, y * cellSize + cellSize - 5, cellSize - 2, 4)
         ctx.fillRect(x * cellSize + cellSize - 5, y * cellSize + 1, 4, cellSize - 2)
       }
 
+      // Cell border
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'
       ctx.lineWidth = 1
       ctx.strokeRect(x * cellSize + 0.5, y * cellSize + 0.5, cellSize - 1, cellSize - 1)
     }
 
     let animFrameId
+
     const draw = () => {
+      // Dark background
       ctx.fillStyle = '#151820'
       ctx.fillRect(0, 0, width, height)
 
+      // Grid lines
       for (let i = 0; i <= COLS; i++) {
         ctx.beginPath()
         ctx.moveTo(i * cellSize, 0)
@@ -111,6 +119,7 @@ const GameBoard = ({ game, isMobile, callUpdateUI }) => {
       const state = game.getState()
       const explosion = game.updateExplosion(performance.now())
 
+      // Flash effect for line clear
       if (explosion && explosion.flashRows != null) {
         for (const row of explosion.flashRows) {
           ctx.fillStyle = `rgba(223, 231, 255, ${explosion.flashAlpha * 0.6})`
@@ -118,6 +127,7 @@ const GameBoard = ({ game, isMobile, callUpdateUI }) => {
         }
       }
 
+      // Explosion particles
       if (game.explosionParticles && game.explosionParticles.length > 0) {
         for (const p of game.explosionParticles) {
           ctx.globalAlpha = p.life
@@ -129,6 +139,7 @@ const GameBoard = ({ game, isMobile, callUpdateUI }) => {
         ctx.globalAlpha = 1
       }
 
+      // Placed blocks
       for (let row = 0; row < ROWS; row++) {
         for (let col = 0; col < COLS; col++) {
           if (state.board[row][col]) {
@@ -137,6 +148,7 @@ const GameBoard = ({ game, isMobile, callUpdateUI }) => {
         }
       }
 
+      // Current piece
       if (state.currentPiece && state.currentPosition) {
         for (let row = 0; row < state.currentPiece.shape.length; row++) {
           for (let col = 0; col < state.currentPiece.shape[row].length; col++) {
@@ -153,8 +165,18 @@ const GameBoard = ({ game, isMobile, callUpdateUI }) => {
     draw()
 
     return () => cancelAnimationFrame(animFrameId)
-  }, [game, isMobile])
+  }, [game, isMobile, resizeKey])
 
+  // Recalculate cellSize on window resize (orientation change on mobile)
+  useEffect(() => {
+    if (!isMobile) return
+
+    const onResize = () => setResizeKey(k => k + 1)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [isMobile])
+
+  // Touch / pointer swipe handling
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -180,6 +202,7 @@ const GameBoard = ({ game, isMobile, callUpdateUI }) => {
       const threshold = 30
 
       if (absDx < threshold && absDy < threshold) {
+        // Tap = rotate
         touchStartRef.current = null
         game.rotate()
         if (callUpdateUI) callUpdateUI()
@@ -194,11 +217,13 @@ const GameBoard = ({ game, isMobile, callUpdateUI }) => {
       lastMoveRef.current = now
 
       if (absDx > absDy) {
+        // Horizontal swipe = move left/right
         if (dx > 0) game.move('right')
         else game.move('left')
       } else {
+        // Vertical swipe: down = hard drop, up = soft drop (1 cell)
         if (dy > 0) game.hardDrop()
-        else game.rotate()
+        else game.moveDown()
       }
       touchStartRef.current = null
       if (callUpdateUI) callUpdateUI()

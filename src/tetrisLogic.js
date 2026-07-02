@@ -92,10 +92,12 @@ const COLS = 10
 
 const ROWS = 20
 
-let _cellSize = 28
+const CELL_SIZE = 28
+
+let _cellSize = CELL_SIZE
 function getCellSize() { return _cellSize }
 function setCellSize(size) { _cellSize = size }
-export { TETROMINOES, COLS, ROWS, getCellSize, setCellSize }
+export { TETROMINOES, COLS, ROWS, CELL_SIZE, getCellSize, setCellSize }
 
 export class TetrisGame {
   constructor() {
